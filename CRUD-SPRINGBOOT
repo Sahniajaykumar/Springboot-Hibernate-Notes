@@ -13,7 +13,7 @@
 | `@Repository`              | Marks DAO layer bean; enables exception translation                                 |
 | `@Autowired`               | Automatic dependency injection                                                      |
 | `@Value`                   | Injects property value from `application.properties` / `yml`                        |
-| `@ComponentScan`           | Scans packages for Spring beans                                                     |
+| `@ComponentScan`           | Scans packages for Spring beans                                                      |
 | `@EnableAutoConfiguration` | Auto-configures Spring Boot application based on dependencies                       |
 | `@Primary`                 | Marks a bean as primary when multiple candidates exist                              |
 | `@Qualifier`               | Selects a specific bean when multiple exist                                         |
@@ -216,6 +216,401 @@ public class UserService {
 public void setUserRepository(UserRepository userRepository) {
     this.userRepository = userRepository;
 }
+
+6. @Value : 
+===============
+--> @Value is used to inject values from configuration files (application.properties / application.yml) into Spring beans.
+
+🧠 Why @Value is used ? 
+--> Read values from config files
+--> Avoid hard-coding
+--> Externalize environment-specific data
+
+Ex: application.yml
+--------------------
+app.name: User Service
+app.timeout: 30
+
+Java Class 
+-----------
+@Component
+public class AppConfig {
+
+    @Value("${app.name}")
+    private String appName;
+
+    @Value("${app.timeout}")
+    private int timeout;
+}
+✅ Spring injects values at runtime
+
+⚠️ Important Notes : 
+-----------------------
+--> Key must exist, else app fails to start
+--> Type conversion is automatic
+--> Supports default values
+
+Ex:
+@Value("${server.port:8080}")
+private int port;
+
+7. @ConfigurationProperties : 
+===============================
+--> It binds a group of related configuration properties into a strongly-typed Java class.
+
+🧠 Why @ConfigurationProperties is used ?
+--> Clean handling of multiple related properties
+--> Type-safe configuration
+--> Better than many @Value annotations
+
+Example (Industry Standard) :
+application.yml
+------------------
+app:
+  name: User Service
+  timeout: 30
+  max-users: 100
+
+Config Class 
+---------------
+@Component
+@ConfigurationProperties(prefix = "app")
+public class AppProperties {
+
+    private String name;
+    private int timeout;
+    private int maxUsers;
+
+    // getters & setters
+}
+✅ All app.* values mapped automatically
+✅ Type-safe
+✅ Clean code
+
+Q: @Value vs @ConfigurationProperties (Interview Table)?
+
+| Feature         | `@Value` | `@ConfigurationProperties`   |
+| --------------- | -------- | --------------------------   |
+| Multiple values | ❌       | ✅                          |
+| Type safety     | ❌       | ✅                          |
+| Readability     | ❌       | ✅                          |
+| Validation      | ❌       | ✅ (`@Validated`)           |
+
+8. @ComponentScan : 
+--> @ComponentScan tells Spring which packages to scan to detect and register Spring beans.
+
+🧠 Why @ComponentScan is used ?
+--> To discover beans automatically
+--> To define base packages for scanning
+--> Required when beans are outside the default package
+
+Ex: 
+@ComponentScan(basePackages = "com.ajay.userservice")
+public class AppConfig {
+}
+--> Spring scans : com.ajay.userservice.*
+
+@SpringBootApplication : Default Behavior (VERY IMPORTANT)
+➡ Internally includes: @ComponentScan
+📌 It scans:
+--> The package of the main class
+--> All its sub-packages
+
+9. @EnableAutoConfiguration : 
+--> It tells Spring Boot to automatically configure beans based on the dependencies present in the classpath.
+
+🧠 Why @EnableAutoConfiguration is used ?
+--> Removes manual configuration
+--> Automatically sets up:
+     1. DataSource
+     2. JPA / Hibernate
+     3. Spring MVC
+     4. Security
+     5. Makes Spring Boot plug-and-play
+
+🔄 How it works (Simple) : 
+
+Dependencies (pom.xml)
+   ↓
+@EnableAutoConfiguration
+   ↓
+Spring Boot checks classpath
+   ↓
+Auto-configures required beans
+
+Example:
+  1. spring-boot-starter-data-jpa present → JPA configured
+  2. MySQL driver present → DataSource configured
+
+❌ Without @EnableAutoConfiguration
+--> You must configure everything manually
+--> No default beans
+--> More boilerplate code
+
+⚠️ Common Interview Traps
+1. ❌ Thinking it scans packages → ❌ (That’s @ComponentScan)
+2. ❌ Thinking it creates all beans → ❌ (Only relevant ones)
+
+10. @Primary : 
+=================
+--> It tells Spring which bean should be injected by default when multiple beans of the same type exist.
+
+🧠 Why @Primary is used
+--> To resolve ambiguity when more than one bean of the same type is present
+--> Avoids NoUniqueBeanDefinitionException
+
+Problem Example (Without @Primary) : 
+@Component
+public class SmsService implements NotificationService {}
+
+@Component
+public class EmailService implements NotificationService {}
+
+@Autowired
+private NotificationService notificationService;
+
+❌ Spring error: NoUniqueBeanDefinitionException
+
+✅ Solution Using @Primary : 
+@Component
+@Primary
+public class EmailService implements NotificationService {}
+--> Spring injects EmailService by default
+
+🔁 How it works
+  1. Spring sees multiple beans
+  2. Picks the one marked with @Primary
+
+⚠️ Important Notes
+  1. Works only when multiple beans of same type
+  2. Can be overridden using @Qualifier
+  3. Applicable on @Component / @Bean
+
+11. @Qualifier : 
+--> @Qualifier is used to specify which bean to inject when multiple beans of the same type are available.
+
+🧠 Why @Qualifier is used
+--> To remove ambiguity
+--> To select a specific implementation
+--> Overrides @Primary
+
+🔧 Problem Scenario
+ 1. interface : 
+public interface PaymentService {}
+
+UpiPaymentService: 
+--------------------
+@Component("upiService")
+public class UpiPaymentService implements PaymentService {}
+
+CardPaymentService: 
+---------------------
+@Component("cardService")
+public class CardPaymentService implements PaymentService {}
+
+❌ Without @Qualifier
+------------------------
+@Autowired
+private PaymentService paymentService;
+
+❌ Error: NoUniqueBeanDefinitionException
+
+✅ With @Qualifier : 
+-----------------------
+@Autowired
+@Qualifier("upiService")
+private PaymentService paymentService;
+
+--> ✔ UpiPaymentService is injected
+
+Q: 🆚 @Qualifier vs @Primary (Interview-Ready) : 
+
+| Feature        | `@Qualifier`                 | `@Primary`              |
+| -------------- | ---------------------------- | ----------------------- |
+| Purpose        | Select **specific bean**     | Select **default bean** |
+| When used      | At **injection point**       | On **bean definition**  |
+| Control        | **Explicit** (local)         | **Implicit** (global)   |
+| Multiple beans | Yes                          | Yes (only one primary)  |
+| Overrides      | Overrides `@Primary`         | Can be overridden       |
+| Best use case  | Different behavior per class | One common default      |
+| Scope          | Per injection                | Application-wide        |
+
+12. @PostConstruct : 
+--> It runs a method automatically after the bean is created and all dependencies are injected.
+
+🧠 Why @PostConstruct is used
+--> To perform initialization logic
+--> To validate configuration
+--> To load cache / pre-data after startup
+
+🔄 Bean Lifecycle (Simple) : 
+Bean created
+   ↓
+Dependencies injected (@Autowired)
+   ↓
+@PostConstruct method runs  ✅
+
+Ex: 
+@Component
+public class CacheLoader {
+
+    @PostConstruct
+    public void init() {
+        System.out.println("Cache loaded");
+    }
+}
+--> Runs once at application startup
+--> Runs after DI, not before
+
+⚠️ Important Rules
+1. Method must be: I. void.  II. No arguments
+2. Only one per bean (recommended)
+3. Runs only once
+
+Q: 🆚 @PostConstruct vs Constructor ?
+
+| Feature                | Constructor            | `@PostConstruct` |
+| ---------------------- | ---------------------- | ---------------- |
+| DI completed           | ❌                     | ✅              |
+| Access autowired beans | ❌                     | ✅              |
+| Called                 | During object creation  | After injection |
+
+13. @PreDestroy : 
+--> It runs a method just before a Spring bean is destroyed (when the application is shutting down).
+
+🧠 Why @PreDestroy is used
+--> To perform cleanup logic
+--> Release resources
+--> Close connections gracefully
+
+🔄 Bean Lifecycle (Complete View) : 
+
+Bean created
+   ↓
+Dependencies injected
+   ↓
+@PostConstruct
+   ↓
+Application running
+   ↓
+@PreDestroy  ✅
+   ↓
+Bean destroyed
+
+Ex: 
+@Component
+public class ResourceManager {
+
+    @PostConstruct
+    public void init() {
+        System.out.println("Resources initialized");
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        System.out.println("Resources released");
+    }
+}
+--> ✔ Runs once
+--> ✔ Triggered during graceful shutdown
+
+⚠️ Important Rules
+
+Method must be: 1. void  2. No arguments
+
+Executes only if: 1. Context closes normally 2. Not on JVM crash
+
+Q: 🆚 @PreDestroy vs @PostConstruct ?
+
+| Feature | `@PostConstruct`    | `@PreDestroy`           |
+| ------- | ------------------- | ----------------------- |
+| When    | After bean creation | Before bean destruction |
+| Use     | Initialization      | Cleanup                 |
+
+14. @Scope : 
+--> @Scope defines how and when Spring creates bean instances.
+
+🧠 Why @Scope is used
+--> Control bean instance creation
+--> Define whether a bean is shared or new per request
+
+Common Bean Scopes : 
+| Scope                 | Meaning                           |
+| --------------------- | --------------------------------- |
+| `singleton` (default) | One instance per Spring container |
+| `prototype`           | New instance every time           |
+| `request`             | One per HTTP request              |
+| `session`             | One per HTTP session              |
+| `application`         | One per web application           |
+| `websocket`           | One per WebSocket                 |
+
+Ex: Singleton (Default)
+@Component
+@Scope("singleton")
+public class UserService {
+}
+--> ✔ Same object reused
+
+Ex: Prototype
+@Component
+@Scope("prototype")
+public class TokenGenerator {
+}
+--> ✔ New object every injection
+
+Ex: Web Scope
+@Component
+@Scope(value = WebApplicationContext.SCOPE_REQUEST)
+public class RequestData {
+}
+
+⚠️ Important Interview Points
+--> Singleton beans live from startup to shutdown
+
+--> Prototype beans:
+           1. Spring creates
+           2. Spring does NOT destroy
+           3. @PreDestroy ❌ for prototype
+
+15. @Profile :
+--> It tells Spring to load a bean or configuration only when a specific environment profile is active.
+
+🧠 Why @Profile is used
+--> Environment-specific configuration
+--> Separate dev / test / prod behavior
+--> Avoids manual code changes between environments
+
+Ex: 
+application.yml
+----------------
+spring:
+  profiles:
+    active: dev
+
+Bean Definitions
+------------------
+1.DevDataSourceConfig
+@Component
+@Profile("dev")
+public class DevDataSourceConfig {
+}
+
+2.ProdDataSourceConfig
+@Component
+@Profile("prod")
+public class ProdDataSourceConfig {
+}
+Note: Only DevDataSourceConfig loads when dev is active
+
+🔄 How it works (Simple) : 
+      Active profile checked
+             ↓
+      Matching beans loaded
+
+Q: Where You Can Use @Profile
+--> On @Component
+--> On @Configuration
+--> On @Bean methods
 
 2️⃣ Spring MVC / REST Annotations
 ----------------------------------------
