@@ -1,0 +1,241 @@
+Q: Why Getters and Setters Required ?
+---------------------------------------------
+-->  Because Spring (uses Jackson) accesses fields through getters and setters to convert JSON ↔ Java objects.
+
+1. Setters → used when JSON → RequestDTO (reading request data)
+
+2. Getters → used when ResponseDTO → JSON (sending response data)
+
+Note: 👉 Without them, data cannot be read or written, so fields stay null or responses become empty.
+
+Interview one-liner: Getters and setters are required because Spring uses them for serialization and deserialization of DTOs.
+-------------------
+in details : Think like this 👇
+-------------
+--> Spring cannot directly read or write your variables.
+--> It uses methods.
+
+Example
+JSON coming from client
+{
+  "name": "Ajay"
+}
+
+Your DTO
+class UserRequestDTO {
+    private String name;
+}
+--> ❌ Spring cannot put "Ajay" into name directly.
+
+--> What Spring actually does internally
+
+Spring (Jackson) does this: dto.setName("Ajay");   // uses SETTER
+
+Note: 👉 No setter = no value set = name is null
+
+When sending response back
+return dto;
+
+Spring does: dto.getName();   // uses GETTER
+
+Note: 👉 No getter = no value in JSON response
+
+Very Simple Rule ✅
+
+| Direction              | Needed     |
+| ---------------------- | ---------- |
+| JSON → Java (Request)  | **Setter** |
+| Java → JSON (Response) | **Getter** |
+
+Q:Can i use APIResponse<T> instead of requestDto and ResponseDto ?
+--> ❌ NO — you should not use APIResponse<T> instead of RequestDTO and ResponseDTO.
+--> They serve different purposes.
+
+Very Simple Explanation (No jargon)
+
+🔹 RequestDTO : 👉 Used to receive data from client
+
+🔹 ResponseDTO : 👉 Used to send business data to client
+
+🔹 APIResponse<T> : 👉 Used to wrap the response, not replace DTOs
+
+Think Like This 🧠
+
+🎁 APIResponse = gift box
+📦 ResponseDTO = item inside box
+📝 RequestDTO = order form
+
+You can’t send an order form inside a gift box 😉
+
+Correct Industry Usage ✅: 
+
+1️⃣ APIResponse Wrapper (Common for all APIs) : 
+
+public class APIResponse<T> {
+
+    private boolean success;
+    private String message;
+    private T data;
+
+    public APIResponse(boolean success, String message, T data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+    }
+
+    public boolean isSuccess() { return success; }
+    public String getMessage() { return message; }
+    public T getData() { return data; }
+}
+
+2️⃣ Entity : 
+
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String email;
+}
+
+3️⃣ DTOs : 
+
+public class UserRequestDTO {
+    private String name;
+    private String email;
+}
+
+public class UserResponseDTO {
+    private Long id;
+    private String name;
+    private String email;
+}
+
+4️⃣ Repository : 
+
+public interface UserRepository extends JpaRepository<User, Long> {
+}
+
+5️⃣ Service : 
+
+public interface UserService {
+    UserResponseDTO create(UserRequestDTO dto);
+    UserResponseDTO getById(Long id);
+    List<UserResponseDTO> getAll();
+    UserResponseDTO update(Long id, UserRequestDTO dto);
+    void delete(Long id);
+}
+
+Service Impl
+-------------
+
+@Service
+public class UserServiceImpl implements UserService {
+
+    @Autowired
+    private UserRepository repo;
+
+    @Override
+    public UserResponseDTO create(UserRequestDTO dto) {
+        User user = new User();
+        user.setName(dto.getName());
+        user.setEmail(dto.getEmail());
+        return toDTO(repo.save(user));
+    }
+
+    @Override
+    public UserResponseDTO getById(Long id) {
+        User user = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return toDTO(user);
+    }
+
+    @Override
+    public List<UserResponseDTO> getAll() {
+        return repo.findAll().stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
+    @Override
+    public UserResponseDTO update(Long id, UserRequestDTO dto) {
+        User user = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setName(dto.getName());
+        user.setEmail(dto.getEmail());
+        return toDTO(repo.save(user));
+    }
+
+    @Override
+    public void delete(Long id) {
+        repo.deleteById(id);
+    }
+
+    private UserResponseDTO toDTO(User user) {
+        UserResponseDTO dto = new UserResponseDTO();
+        dto.setId(user.getId());
+        dto.setName(user.getName());
+        dto.setEmail(user.getEmail());
+        return dto;
+    }
+}
+
+
+6️⃣ Controller (CRUD with APIResponse)
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    @Autowired
+    private UserService service;
+
+    @PostMapping
+    public ResponseEntity<APIResponse<UserResponseDTO>> create(
+            @RequestBody UserRequestDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new APIResponse<>(true, "User created", service.create(dto)));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<APIResponse<UserResponseDTO>> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(
+                new APIResponse<>(true, "User found", service.getById(id)));
+    }
+
+    @GetMapping
+    public ResponseEntity<APIResponse<List<UserResponseDTO>>> getAll() {
+        return ResponseEntity.ok(
+                new APIResponse<>(true, "Users fetched", service.getAll()));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<APIResponse<UserResponseDTO>> update(
+            @PathVariable Long id,
+            @RequestBody UserRequestDTO dto) {
+        return ResponseEntity.ok(
+                new APIResponse<>(true, "User updated", service.update(id, dto)));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<APIResponse<Void>> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.ok(
+                new APIResponse<>(true, "User deleted", null));
+    }
+}
+Note: 
+✅ There is NO change in the Service layer
+
+When you introduce APIResponse<T>:
+--> 👉 Service layer stays exactly the same
+--> 👉 Only the Controller layer changes
+
+Why? (Simple words) : 
+--> Service layer → business logic (create, update, delete, fetch)
+--> APIResponse<T> → only for HTTP response formatting
+--> Business logic must not depend on API structure
