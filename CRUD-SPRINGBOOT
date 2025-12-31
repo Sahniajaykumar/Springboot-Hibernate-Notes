@@ -1,3 +1,312 @@
+🌟 Spring Boot & Hibernate Annotations — Mega Table
+=====================================================
+
+1️⃣ Spring Boot / Core Spring
+-------------------------------
+| Annotation                 | Purpose / Short Explanation                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| `@SpringBootApplication`   | Main class; combines `@Configuration`, `@EnableAutoConfiguration`, `@ComponentScan` |
+| `@Configuration`           | Marks a configuration class                                                         |
+| `@Bean`                    | Defines a Spring bean inside configuration                                          |
+| `@Component`               | Generic Spring bean                                                                 |
+| `@Service`                 | Marks service/business layer bean                                                   |
+| `@Repository`              | Marks DAO layer bean; enables exception translation                                 |
+| `@Autowired`               | Automatic dependency injection                                                      |
+| `@Value`                   | Injects property value from `application.properties` / `yml`                        |
+| `@ComponentScan`           | Scans packages for Spring beans                                                     |
+| `@EnableAutoConfiguration` | Auto-configures Spring Boot application based on dependencies                       |
+| `@Primary`                 | Marks a bean as primary when multiple candidates exist                              |
+| `@Qualifier`               | Selects a specific bean when multiple exist                                         |
+| `@PostConstruct`           | Method runs after bean initialization                                               |
+| `@PreDestroy`              | Method runs before bean destruction                                                 |
+| `@Scope`                   | Defines bean scope (`singleton`, `prototype`, etc.)                                 |
+| `@ConditionalOnProperty`   | Conditional bean creation based on property value                                   |
+| `@Profile`                 | Marks beans/config for specific profile (`dev`, `prod`)                             |
+
+1. @SpringBootApplication : Main class; combines `@Configuration`, `@EnableAutoConfiguration`, `@ComponentScan`
+--> @SpringBootApplication is the entry point of a Spring Boot app that enables auto-configuration,
+    component scanning, and Java-based configuration.
+Ex: 
+@SpringBootApplication
+public class UserServiceApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(UserServiceApplication.class, args);
+    }
+}
+
+|Startup Flow (Simple) :                           |
+|--------------------------------------------------
+|main() method                                     |
+   ↓
+|@SpringBootApplication detected                   |
+   ↓
+|Auto-configuration applied                        |
+   ↓
+|@ComponentScan runs                               |
+   ↓
+|Beans created (@Controller, @Service, @Repository)|
+   ↓
+|Application starts                                |
+----------------------------------------------------
+
+2. @Configuration: 
+--> @Configuration classes are processed during Spring Boot startup to register beans in the application context,
+    before other dependent beans are created.
+
+🔹 Key Points
+--> @Configuration classes are processed first to register @Bean methods.
+--> Beans inside @Configuration are singleton by default and managed by Spring.
+--> @Component beans are created after scanning, so if they depend on a @Bean, it must already exist.
+--> @Configuration ensures that even if a @Bean method is called multiple times, same singleton instance is returned (thanks to CGLIB proxy).
+Example : 
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public MyService myService() {
+        return new MyServiceImpl();
+    }
+}
+
+@Component
+public class MyComponent {
+
+    @Autowired
+    private MyService myService; // injected from AppConfig
+}
+✅ Here:
+--> AppConfig (@Configuration) runs first, creates myService bean
+--> MyComponent (@Component) is initialized after, and receives the same singleton myService
+
+3. @Bean : 
+--> It tells Spring to create and manage an object (bean) returned by a method.
+
+Why @Bean is used : 
+--> When you cannot annotate the class with @Component (third-party / library class)
+--> When you want full control over object creation
+Ex: 
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+✅ Spring creates one instance of PasswordEncoder
+✅ Available for @Autowired anywhere
+
+How it works (Simple)
+--> Spring internally does: PasswordEncoder encoder = passwordEncoder();
+    and stores it in the ApplicationContext.
+
+Q: @Bean vs @Component (Quick): 
+-----------------------------------
+| `@Bean`                        | `@Component`           |
+| ------------------------------ | ---------------------- |
+| Method-level.                  | Class-level            |
+| Used in `@Configuration` .     | Used directly on class |
+| For external / custom creation.| For your own classes   |
+
+4. @Component : 
+--> It marks a class as a Spring-managed bean so Spring can automatically create and manage its object.
+Ex: 
+@Component
+public class EmailService {
+    public void sendEmail() {
+        System.out.println("Email sent");
+    }
+}
+✅ Spring creates the object
+✅ You can inject it using @Autowired
+
+Special Types of @Component : 
+---------------------------------------------
+| Annotation        | Used for             |
+| ----------------- | -------------------- |
+| `@Service`        | Business logic layer |
+| `@Repository`     | DAO / DB layer       |
+| `@Controller`     | MVC controller       |
+| `@RestController` | REST APIs            |
+
+5. @Autowired : 
+--> It tells Spring to automatically inject (provide) the required dependency into a class. or,
+--> @Autowired enables dependency injection by automatically injecting required Spring-managed beans.
+
+Q: Why @Autowired is used
+--> To achieve Dependency Injection (DI)
+--> Removes manual object creation using new
+--> Promotes loose coupling
+
+Ex: 
+@Service
+public class UserService {
+
+    @Autowired
+    private UserRepository userRepository;
+}
+
+Q: What is Dependency Injection ?
+-----------------------------------
+ -->  Dependency Injection means instead of a class creating its own objects, Spring provides (injects) them.
+
+🧠 In Very Simple Words
+
+❌ Without DI: UserService service = new UserService();
+
+✅ With DI: Spring creates UserService and injects its dependencies automatically
+
+🔗 What is a Dependency?
+--> A dependency is any object a class needs to work.
+
+Ex: UserService depends on UserRepository
+
+❌ Without Dependency Injection (Bad Practice)
+public class UserService {
+    private UserRepository repo = new UserRepository();
+}
+❌ Tight coupling
+❌ Hard to test
+❌ Not flexible
+
+✅ With Dependency Injection (Spring Way)
+@Service
+public class UserService {
+
+    private final UserRepository repo;
+
+    public UserService(UserRepository repo) {
+        this.repo = repo;
+    }
+}
+✔ Loose coupling
+✔ Easy testing
+✔ Clean architecture
+
+🧩 How Spring Does DI
+Spring Container
+   ↓
+Creates beans
+   ↓
+Resolves dependencies
+   ↓
+Injects dependencies
+
+Types of Dependency Injection : 
+---------------------------------
+
+1️⃣ Field Injection (Not Recommended)
+@Autowired
+private UserRepository userRepository;
+
+2️⃣ Constructor Injection ✅ (Best Practice)
+@Service
+public class UserService {
+
+    private final UserRepository userRepository;
+
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+}
+
+3️⃣ Setter Injection
+@Autowired
+public void setUserRepository(UserRepository userRepository) {
+    this.userRepository = userRepository;
+}
+
+2️⃣ Spring MVC / REST Annotations
+----------------------------------------
+| Annotation              | Purpose / Short Explanation                                  |
+| ----------------------- | ------------------------------------------------------------ |
+| `@RestController`       | Combines `@Controller` + `@ResponseBody`, used for REST APIs |
+| `@Controller`           | Handles HTTP requests; returns view                          |
+| `@RequestMapping`       | Maps HTTP requests (GET, POST, etc.)                         |
+| `@GetMapping`           | Shortcut for GET request                                     |
+| `@PostMapping`          | Shortcut for POST request                                    |
+| `@PutMapping`           | Shortcut for PUT request                                     |
+| `@DeleteMapping`        | Shortcut for DELETE request                                  |
+| `@PathVariable`         | Binds URI template variable to method parameter              |
+| `@RequestParam`         | Binds query parameter to method parameter                    |
+| `@RequestBody`          | Maps HTTP request body (JSON → Object)                       |
+| `@ResponseBody`         | Converts return object to JSON response                      |
+| `@CrossOrigin`          | Enables CORS for REST API                                    |
+| `@ExceptionHandler`     | Handles exceptions in controller methods                     |
+| `@RestControllerAdvice` | Global exception handler for REST APIs                       |
+| `@ModelAttribute`       | Binds request parameters to method/model object              |
+| `@Valid`                | Triggers validation for DTOs                                 |
+
+
+3️⃣ Spring Security Annotations
+----------------------------------
+| Annotation                 | Purpose / Short Explanation                   |
+| -------------------------- | --------------------------------------------- |
+| `@EnableWebSecurity`       | Enables Spring Security configuration         |
+| `@PreAuthorize`            | Method-level access control using SpEL        |
+| `@PostAuthorize`           | Checks authorization after method execution   |
+| `@Secured`                 | Role-based method security                    |
+| `@AuthenticationPrincipal` | Access logged-in user principal in controller |
+
+
+4️⃣ Transaction & JPA Integration
+----------------------------------
+| Annotation               | Purpose / Short Explanation                   |
+| ------------------------ | --------------------------------------------- |
+| `@Transactional`         | Marks method/class for transaction management |
+| `@EnableJpaRepositories` | Enables JPA repositories scanning             |
+
+
+5️⃣ Hibernate / JPA (Entity Layer)
+-------------------------------------
+| Annotation                                            | Purpose / Short Explanation                 |
+| ----------------------------------------------------- | ------------------------------------------- |
+| `@Entity`                                             | Marks class as database entity              |
+| `@Table`                                              | Maps entity to DB table                     |
+| `@Id`                                                 | Marks primary key                           |
+| `@GeneratedValue`                                     | Auto-generates primary key                  |
+| `@GeneratedValue(strategy = GenerationType.IDENTITY)` | Auto-increment PK                           |
+| `@Column`                                             | Maps field to DB column                     |
+| `@OneToOne`                                           | One-to-One relationship                     |
+| `@OneToMany`                                          | One-to-Many relationship                    |
+| `@ManyToOne`                                          | Many-to-One relationship                    |
+| `@ManyToMany`                                         | Many-to-Many relationship                   |
+| `@JoinColumn`                                         | Defines foreign key column                  |
+| `@JoinTable`                                          | Defines join table for Many-to-Many         |
+| `@Lob`                                                | Large object (CLOB / BLOB)                  |
+| `@Transient`                                          | Field not persisted                         |
+| `@Enumerated`                                         | Maps Enum to DB column                      |
+| `@NamedQuery`                                         | Defines static JPQL query                   |
+| `@Query`                                              | Custom query in repository                  |
+| `@OrderBy`                                            | Specifies ordering of collection            |
+| `@Fetch`                                              | Hibernate fetch strategy (`EAGER` / `LAZY`) |
+| `@Embedded`                                           | Marks embedded object in entity             |
+| `@Embeddable`                                         | Marks object that can be embedded           |
+| `@Version`                                            | Optimistic locking field                    |
+
+
+6️⃣ Validation Annotations (DTO Layer)
+-----------------------------------------
+| Annotation        | Purpose / Short Explanation            |
+| ----------------- | -------------------------------------- |
+| `@NotNull`        | Field must not be null                 |
+| `@NotEmpty`       | Field must not be empty                |
+| `@NotBlank`       | Field must not be blank (Strings)      |
+| `@Size(min, max)` | Validate length of String / collection |
+| `@Email`          | Validate email format                  |
+| `@Pattern`        | Validate against regex pattern         |
+| `@Min` / `@Max`   | Validate numeric range                 |
+
+
+7️⃣ Jackson / JSON Annotations
+-------------------------------
+| Annotation      | Purpose / Short Explanation            |
+| --------------- | -------------------------------------- |
+| `@JsonIgnore`   | Ignore field during JSON serialization |
+| `@JsonProperty` | Customize JSON property name           |
+
+
 Q: Why Getters and Setters Required ?
 ---------------------------------------------
 -->  Because Spring (uses Jackson) accesses fields through getters and setters to convert JSON ↔ Java objects.
@@ -239,3 +548,20 @@ Why? (Simple words) :
 --> Service layer → business logic (create, update, delete, fetch)
 --> APIResponse<T> → only for HTTP response formatting
 --> Business logic must not depend on API structure
+
+Q:  application.properties Vs application.yml      
+----------------------------------------------------
+| Feature           | application.properties   | application.yml                   |
+| ----------------- | ------------------------ | --------------------------------- |
+| Format            | `key=value`              | Indentation-based                 |
+| Structure         | Flat                     | Hierarchical                      |
+| Readability       | Harder for large configs | **More readable**                 |
+| Nested Config     | Difficult                | **Easy & natural**                |
+| Lists / Arrays    | Complex syntax           | **Simple syntax**                 |
+| Duplicate Keys    | Allowed                  | **Not allowed**                   |
+| Profiles Handling | Less clear               | **Cleaner**                       |
+| Industry Usage    | Small / legacy apps      | **Enterprise & microservices**    |
+| Error Prone       | More chances             | **Less chances**                  |
+| Learning Curve    | Easy                     | Slightly careful with indentation |
+
+
