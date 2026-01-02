@@ -612,6 +612,7 @@ Q: Where You Can Use @Profile
 --> On @Configuration
 --> On @Bean methods
 
+=====================================================================================================================================
 2️⃣ Spring MVC / REST Annotations
 ----------------------------------------
 | Annotation              | Purpose / Short Explanation                                  |
@@ -633,6 +634,257 @@ Q: Where You Can Use @Profile
 | `@ModelAttribute`       | Binds request parameters to method/model object              |
 | `@Valid`                | Triggers validation for DTOs                                 |
 
+1. @RestController
+-->  @RestController is used to build REST APIs and automatically converts Java objects into JSON responses.”
+-->  It combines @Controller + @ResponseBody, meaning all methods return data directly as JSON/XML, not views.
+Ex: 
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @GetMapping
+    public List<User> getAllUsers() {
+        return userService.getAllUsers();
+    }
+
+    @PostMapping
+    public User createUser(@RequestBody User user) {
+        return userService.createUser(user);
+    }
+}
+
+2. @Controller : 
+--> @Controller is a Spring MVC annotation used to handle web requests and return views (JSP, Thymeleaf, HTML).
+--> It is mainly used in traditional MVC applications, not pure REST APIs.
+Ex: 
+@Controller
+@RequestMapping("/users")
+public class UserController {
+
+    @GetMapping("/page")
+    public String userPage(Model model) {
+        model.addAttribute("users", userService.getAllUsers());
+        return "users"; // returns users.html
+    }
+}
+
+Q: @Controller vs @RestController
+
+| Feature                    | `@Controller`                                                   | `@RestController`                                                 |
+| -------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------- |
+| **Purpose**                | Handles web requests and returns **views** (HTML/JSP/Thymeleaf) | Handles web requests and returns **JSON/XML** directly (REST API) |
+| **Response Type**          | View name (requires a template engine like Thymeleaf)           | JSON/XML (no view rendering)                                      |
+| **Annotation Composition** | Standalone                                                      | Combination of `@Controller + @ResponseBody`                      |
+| **Typical Use Case**       | Traditional Spring MVC web applications                         | RESTful web services / APIs                                       |
+| **Method Return**          | Returns **String** (view name) or `ModelAndView`                | Returns **Java objects**, automatically serialized as JSON/XML    |
+| **Default Serialization**  | ❌ Not serialized (needs `@ResponseBody` for JSON)              | ✅ Automatically serialized to JSON/XML                          |
+
+
+3. @RequestMapping : 
+--> “@RequestMapping is a generic mapping annotation used to define base URLs and map multiple HTTP methods, while specific annotations like @GetMapping provide better clarity.”
+
+4. @GetMapping : 
+--> @GetMapping is used to handle HTTP GET requests and it is used to retrieve (read-only) data from the database through an API.
+
+Q: @GetMapping does directly access the database ?
+--> @GetMapping does not directly access the database
+--> It calls the service layer, which then interacts with the repository (JPA) to fetch data .
+
+5. @PostMapping : 
+--> @PostMapping is used to handle HTTP POST requests and it is used to create/save new data into the database through a REST API.
+
+6. @PutMapping : 
+-->  @PutMapping is used to handle HTTP PUT requests and it is used to update an existing resource completely in the database through a REST API.
+
+7. @PatchMapping
+-->  @PatchMapping is used to handle HTTP PATCH requests and it is used to partially update an existing resource in the database.
+
+8. DeleteMapping : 
+--> @DeleteMapping is used to handle HTTP DELETE requests and it is used to remove data from the database through a REST API.
+
+9. @PathVariable : 
+--> @PathVariable is used to extract values from URI path segments in a REST API.
+-->  It allows you to capture dynamic values from the URL and use them as method parameters.
+Ex: 
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @GetMapping("/{id}")
+    public User getUserById(@PathVariable Long id) {
+        return userService.getUserById(id);
+    }
+}
+--> URL: GET /users/5
+--> @PathVariable captures 5 and passes it as id to the method.
+
+Q. URI Vs URL ?
+--> URI (Uniform Resource Identifier): Identifies a resource on the server (can be just a path like /users/5).
+--> URL (Uniform Resource Locator): Is a type of URI that also includes protocol, domain, and port (like http://localhost:8080/users/5).
+
+10. @RequestParam : 
+--> @RequestParam is used to extract query parameters from the URL(after ?) in a REST API.
+--> It only captures query parameter values and passes them to the controller method, which then calls the service layer and the repository interacts with the database.
+
+Ex: 
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @GetMapping
+    public List<User> getUsersByRole(@RequestParam String role) {
+        return userService.getUsersByRole(role);
+    }
+}
+--> URL: GET /users?role=admin
+--> @RequestParam captures role=admin and passes it to the method.
+
+Q: @RequestParam Vs @PathVariable ?
+--> “@RequestParam is used to extract query parameters from the URL, while @PathVariable extracts values from URI path segments.”
+
+11. @RequestBody : 
+--> @RequestBody is used to converts the incoming request body into a Java object.
+--> It is mainly used with POST or PUT requests to receive JSON (or XML) data from the client.
+Ex: 
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @PostMapping
+    public User createUser(@RequestBody User user) {
+        return userService.createUser(user);
+    }
+}
+HTTP POST Body (JSON):
+{
+  "name": "Ajay",
+  "email": "ajay@gmail.com",
+  "phone": "7542055096"
+}
+--> @RequestBody converts this JSON into a User object automatically.
+
+12. @ResponseBody : 
+--> “@ResponseBody converts Java objects (returned by controller methods) into JSON/XML responses instead of rendering a view.”
+Ex: 
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @GetMapping("/{id}")
+    @ResponseBody
+    public User getUserById(@PathVariable Long id) {
+        return userService.getUserById(id);
+    }
+}
+--> Here, @ResponseBody ensures the User object is converted to JSON and sent in the HTTP response.
+
+13. @CrossOrigin: 
+--> @CrossOrigin is used to enable CORS and allow frontend applications hosted on different origins to access backend APIs.
+--> It helps to resolve CORS (Cross-Origin Resource Sharing) issues when a frontend and backend run on different origins.
+Ex: 
+@RestController
+@RequestMapping("/users")
+@CrossOrigin(origins = "http://localhost:3000")
+public class UserController {
+
+    @GetMapping
+    public List<User> getAllUsers() {
+        return userService.getAllUsers();
+    }
+}
+--> Allows requests from React app running on port 3000.
+
+14. @ExceptionHandler : 
+--> @ExceptionHandler is used to handle specific exceptions thrown from controller methods and
+    return a custom response instead of a default error. 
+OR,
+--> “@ExceptionHandler is used to handle controller-level exceptions and return meaningful HTTP responses.”
+Ex: 
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @GetMapping("/{id}")
+    public User getUser(@PathVariable Long id) {
+        return userService.getUserById(id);
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<String> handleNotFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                             .body(ex.getMessage());
+    }
+}
+--> If ResourceNotFoundException occurs → custom 404 response is returned.
+
+15. @RestControllerAdvice : 
+--> @RestControllerAdvice is used to create a global exception handler for all REST controllers.
+--> It combines @ControllerAdvice + @ResponseBody, so all exception responses are returned as JSON/XML.
+Ex: 
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<String> handleNotFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                             .body(ex.getMessage());
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<String> handleGeneric(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                             .body("Something went wrong");
+    }
+}
+
+16. @ModelAttribute : 
+--> @ModelAttribute binds form data or request parameters to Java objects and is mainly used in Spring MVC applications.”
+Ex: 
+@Controller
+@RequestMapping("/users")
+public class UserController {
+
+    @PostMapping("/save")
+    public String saveUser(@ModelAttribute User user) {
+        userService.saveUser(user);
+        return "success";
+    }
+}
+--> HTML Form → automatically mapped to User object
+Key Points : 
+--> Used mostly with @Controller, not REST APIs
+--> Works with form submissions
+--> Automatically adds the object to the model
+
+17. @Valid : 
+--> @Valid is used to trigger validation on a request object using Bean Validation (JSR-380) annotations such as @NotNull, @Size, @Email, etc.
+Ex: 
+@PostMapping("/users")
+public ResponseEntity<String> createUser(@Valid @RequestBody UserDTO userDTO) {
+    userService.createUser(userDTO);
+    return ResponseEntity.ok("User created");
+}
+
+✅ DTO with Validation Annotations
+public class UserDTO {
+
+    @NotBlank
+    private String name;
+
+    @Email
+    @NotBlank
+    private String email;
+
+    @Size(min = 10, max = 10)
+    private String phone;
+}
+--> If validation fails → MethodArgumentNotValidException is thrown
+
+Key Points: 
+--> Works with @RequestBody, @ModelAttribute, @PathVariable
+--> Prevents invalid data from entering business logic
+--> Requires spring-boot-starter-validation
+========================================================================================================================================
 
 3️⃣ Spring Security Annotations
 ----------------------------------
@@ -644,6 +896,7 @@ Q: Where You Can Use @Profile
 | `@Secured`                 | Role-based method security                    |
 | `@AuthenticationPrincipal` | Access logged-in user principal in controller |
 
+======================================================================================================================================
 
 4️⃣ Transaction & JPA Integration
 ----------------------------------
