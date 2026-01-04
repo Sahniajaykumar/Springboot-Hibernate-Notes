@@ -1174,6 +1174,22 @@ public class UserController {
         return new ResponseEntity<>("User deleted successfully", HttpStatus.OK);
     }
 }
+application.propertise
+--------------------------
+# Database URL
+spring.datasource.url=jdbc:mysql://localhost:3306/userdb
+
+# Database username & password
+spring.datasource.username=root
+spring.datasource.password=root
+
+# Driver
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
 
 5️⃣ Custom Exception
 public class ResourceNotFoundException extends RuntimeException {
