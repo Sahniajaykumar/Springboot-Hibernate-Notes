@@ -1100,13 +1100,9 @@ OR
       return userRepository.save(user);
    }
 
-    
-
-    //public List<User> getAllUsers() {
-    //    return userRepository.findAll();
-    // }
-  OR
    public List<User> getAllUsers() {
+    // return userRepository.findAll();
+    // OR
     List<User> users = userRepository.findAll();
     if (users.isEmpty()) {
         throw new RuntimeException("No users found");
@@ -1114,11 +1110,10 @@ OR
     return users;
   }
 
-
     public User getUserById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException("User not found with id: " + id));
+                        new ResourceNotFoundException("User not found with id: " + id)); // make sure ResourceNotFoundException class already created in exception package
     }
 
     public User updateUser(Long id, User user) {
@@ -1131,7 +1126,7 @@ OR
 
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User not found with id: " + id);
+            throw new ResourceNotFoundException("User not found with id: " + id); // make sure ResourceNotFoundException class is already created in exception package
         }
         userRepository.deleteById(id);
     }
